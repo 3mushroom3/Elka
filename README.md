@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ёлка: учёт
 
-## Getting Started
+Учётная система для сезонной продажи ёлок: склад, водители, точки, продажи, пересчёты.
+Архитектура, схема БД и план этапов: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Развёртывание на сервере: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-First, run the development server:
+## Запуск на своём компьютере
 
-```bash
+```
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Команда поднимает встроенный PostgreSQL (данные в папке `.pgdata`), применяет миграции,
+создаёт менеджера и справочник видов товара и запускает сайт на http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Первый вход: логин `admin`, пароль `admin12345`. Пароль меняется в разделе «Сотрудники».
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Команды
 
-## Learn More
+| Команда | Что делает |
+|---|---|
+| `npm run dev` | База + сайт для разработки |
+| `npm run db` | Только база (для `prisma migrate dev`) |
+| `npm test` | Тесты учётной логики на отдельной временной базе |
+| `npm run typecheck` | Проверка типов |
+| `npm run lint` | Линтер |
 
-To learn more about Next.js, take a look at the following resources:
+## Устройство
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `src/domain` : учётная логика. Количество товара меняется только через `postMovement` в `ledger.ts`.
+- `src/app` : экраны и серверные действия, права проверяются на сервере по роли.
+- `prisma/migrations` : схема БД, включая триггеры, запрещающие изменять и удалять журнал движений.
+- `tests` : тесты учёта: остатки, доставка, смены и пересчёты, списания, инциденты, уведомления, выгрузка в Excel.
+- `uploads` : фото списаний (в разработке; на сервере это том Docker).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Telegram в разработке: задайте `TELEGRAM_BOT_TOKEN` в `.env`. Без него уведомления работают только внутри системы.

@@ -1,0 +1,622 @@
+generator client {
+  provider      = "prisma-client-js"
+  // native - для разработки, debian - для контейнера на сервере
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  SELLER
+  DRIVER
+}
+
+enum ProductCategory {
+  TREE
+  GOODS
+  ACCESSORY
+}
+
+enum LocationType {
+  SUPPLIER
+  WAREHOUSE
+  DRIVER
+  POINT
+  SOLD
+  WRITTEN_OFF
+  SHORTAGE
+}
+
+enum MovementType {
+  RECEIPT
+  TRANSFER
+  SALE
+  WRITEOFF
+  COUNT_ADJUSTMENT
+  CORRECTION
+}
+
+enum RequestStatus {
+  NEW
+  APPROVED
+  REJECTED
+  DONE
+  CANCELLED
+}
+
+enum TripStatus {
+  ASSIGNED
+  LOADED
+  IN_TRANSIT
+  DELIVERED
+  ACCEPTED
+  CANCELLED
+}
+
+enum IncidentType {
+  LOAD_MISMATCH
+  DELIVERY_MISMATCH
+  DAY_SHORTAGE
+  DAY_SURPLUS
+  NIGHT_SHORTAGE
+  NIGHT_SURPLUS
+  CASH_MISMATCH
+  DISCOUNT
+  SHIFT_NOT_OPENED
+  SHIFT_NOT_CLOSED
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ShiftStatus {
+  OPEN
+  // вечерний пересчёт введён, осталось сдать деньги
+  COUNTED
+  CLOSED
+}
+
+enum CountKind {
+  MORNING
+  EVENING
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}
+
+enum CancelStatus {
+  NONE
+  REQUESTED
+  CANCELLED
+  REJECTED
+}
+
+enum WriteoffReason {
+  DEFECT
+  BROKEN
+  THEFT
+  OTHER
+}
+
+enum WriteoffStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Итог разбора инцидента: записан ли он на сотрудника
+enum IncidentOutcome {
+  CHARGED
+  NOT_CHARGED
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  login          String   @unique
+  passwordHash   String   @map("password_hash")
+  fullName       String   @map("full_name")
+  role           Role
+  isActive       Boolean  @default(true) @map("is_active")
+  telegramChatId String?  @map("telegram_chat_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  sessions          Session[]
+  points            UserPoint[]
+  driverLocation    Location?
+  movements         Movement[]
+  receipts          PurchaseReceipt[]
+  auditEntries      AuditLog[]
+  requests          DeliveryRequest[] @relation("requestAuthor")
+  decisions         DeliveryRequest[] @relation("requestDecider")
+  trips             Trip[]            @relation("tripDriver")
+  acceptedTrips     Trip[]            @relation("tripAcceptor")
+  incidents         Incident[]        @relation("incidentUser")
+  incidents2        Incident[]        @relation("incidentSecondUser")
+  resolutions       Incident[]        @relation("incidentResolver")
+  shifts            Shift[]           @relation("shiftSeller")
+  cashReceipts      Shift[]           @relation("shiftCashReceiver")
+  stickerChecks     Shift[]           @relation("shiftStickerChecker")
+  sales             Sale[]            @relation("saleSeller")
+  cancelDecisions   Sale[]            @relation("saleCancelDecider")
+  charges           Incident[]        @relation("incidentCharged")
+  attachments       Attachment[]
+  writeoffs         WriteoffRequest[] @relation("writeoffAuthor")
+  writeoffDecisions WriteoffRequest[] @relation("writeoffDecider")
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @map("token_hash")
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model Point {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  address           String   @default("")
+  // Время по часовому поясу сети в формате "HH:MM"
+  openDeadline      String   @default("10:00") @map("open_deadline")
+  closeDeadline     String   @default("22:00") @map("close_deadline")
+  lowStockThreshold Int      @default(10) @map("low_stock_threshold")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  sellers   UserPoint[]
+  location  Location?
+  requests  DeliveryRequest[]
+  trips     Trip[]
+  incidents Incident[]
+  shifts    Shift[]
+  sales     Sale[]
+  writeoffs WriteoffRequest[]
+
+  @@map("points")
+}
+
+model UserPoint {
+  userId  Int @map("user_id")
+  pointId Int @map("point_id")
+
+  user  User  @relation(fields: [userId], references: [id])
+  point Point @relation(fields: [pointId], references: [id])
+
+  @@id([userId, pointId])
+  @@map("user_points")
+}
+
+model Product {
+  id                Int             @id @default(autoincrement())
+  name              String          @unique
+  category          ProductCategory @default(TREE)
+  // Процент продавцу с продажи, целое число
+  commissionPercent Int             @default(10) @map("commission_percent")
+  // Частые цены со стикеров: кнопки быстрого выбора на экране продажи
+  quickPrices       Int[]           @default([]) @map("quick_prices")
+  isCountable       Boolean         @default(true) @map("is_countable")
+  sortOrder         Int             @default(0) @map("sort_order")
+  isActive          Boolean         @default(true) @map("is_active")
+
+  movements     Movement[]
+  purchaseItems PurchaseItem[]
+  requestItems  RequestItem[]
+  tripItems     TripItem[]
+  incidents     Incident[]
+  countItems    StockCountItem[]
+  saleItems     SaleItem[]
+  writeoffs     WriteoffRequest[]
+
+  @@map("products")
+}
+
+model Location {
+  id       Int          @id @default(autoincrement())
+  type     LocationType
+  pointId  Int?         @unique @map("point_id")
+  driverId Int?         @unique @map("driver_id")
+
+  point  Point? @relation(fields: [pointId], references: [id])
+  driver User?  @relation(fields: [driverId], references: [id])
+
+  movementsOut Movement[] @relation("from")
+  movementsIn  Movement[] @relation("to")
+
+  @@map("locations")
+}
+
+// Журнал движений. Только INSERT: UPDATE и DELETE запрещены триггером БД.
+model Movement {
+  id                 Int          @id @default(autoincrement())
+  type               MovementType
+  productId          Int          @map("product_id")
+  qty                Int
+  fromLocationId     Int          @map("from_location_id")
+  toLocationId       Int          @map("to_location_id")
+  authorId           Int          @map("author_id")
+  reason             String?
+  correctsMovementId Int?         @map("corrects_movement_id")
+  receiptId          Int?         @map("receipt_id")
+  tripId             Int?         @map("trip_id")
+  saleId             Int?         @map("sale_id")
+  shiftId            Int?         @map("shift_id")
+  writeoffId         Int?         @map("writeoff_id")
+  incidentId         Int?         @map("incident_id")
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  product     Product          @relation(fields: [productId], references: [id])
+  from        Location         @relation("from", fields: [fromLocationId], references: [id])
+  to          Location         @relation("to", fields: [toLocationId], references: [id])
+  author      User             @relation(fields: [authorId], references: [id])
+  corrects    Movement?        @relation("corrections", fields: [correctsMovementId], references: [id])
+  correctedBy Movement[]       @relation("corrections")
+  receipt     PurchaseReceipt? @relation(fields: [receiptId], references: [id])
+  trip        Trip?            @relation(fields: [tripId], references: [id])
+  sale        Sale?            @relation(fields: [saleId], references: [id])
+  shift       Shift?           @relation(fields: [shiftId], references: [id])
+  writeoff    WriteoffRequest? @relation(fields: [writeoffId], references: [id])
+  incident    Incident?        @relation(fields: [incidentId], references: [id])
+
+  @@index([toLocationId, productId])
+  @@index([fromLocationId, productId])
+  @@index([createdAt])
+  @@map("movements")
+}
+
+model PurchaseReceipt {
+  id          Int      @id @default(autoincrement())
+  supplier    String   @default("")
+  comment     String   @default("")
+  createdById Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  createdBy User           @relation(fields: [createdById], references: [id])
+  items     PurchaseItem[]
+  movements Movement[]
+
+  @@map("purchase_receipts")
+}
+
+model PurchaseItem {
+  id        Int  @id @default(autoincrement())
+  receiptId Int  @map("receipt_id")
+  productId Int  @map("product_id")
+  qty       Int
+  // Закупочная цена за штуку: пока не используется, оставлено на будущее
+  unitCost  Int? @map("unit_cost")
+
+  receipt PurchaseReceipt @relation(fields: [receiptId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+
+  @@map("purchase_items")
+}
+
+// Журнал действий. Только INSERT: UPDATE и DELETE запрещены триггером БД.
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String
+  entity    String   @default("")
+  entityId  Int?     @map("entity_id")
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+// Заявка на завоз: создаёт продавец (или менеджер напрямую), утверждает менеджер.
+model DeliveryRequest {
+  id           Int           @id @default(autoincrement())
+  pointId      Int           @map("point_id")
+  createdById  Int           @map("created_by")
+  status       RequestStatus @default(NEW)
+  comment      String        @default("")
+  decidedById  Int?          @map("decided_by")
+  decidedAt    DateTime?     @map("decided_at")
+  rejectReason String?       @map("reject_reason")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  point     Point         @relation(fields: [pointId], references: [id])
+  createdBy User          @relation("requestAuthor", fields: [createdById], references: [id])
+  decidedBy User?         @relation("requestDecider", fields: [decidedById], references: [id])
+  items     RequestItem[]
+  trip      Trip?
+
+  @@index([status])
+  @@map("delivery_requests")
+}
+
+model RequestItem {
+  id           Int  @id @default(autoincrement())
+  requestId    Int  @map("request_id")
+  productId    Int  @map("product_id")
+  qtyRequested Int  @map("qty_requested")
+  qtyApproved  Int? @map("qty_approved")
+
+  request DeliveryRequest @relation(fields: [requestId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+
+  @@unique([requestId, productId])
+  @@map("request_items")
+}
+
+// Рейс: один водитель везёт товар по одной заявке на одну точку.
+model Trip {
+  id           Int        @id @default(autoincrement())
+  requestId    Int        @unique @map("request_id")
+  driverId     Int        @map("driver_id")
+  pointId      Int        @map("point_id")
+  status       TripStatus @default(ASSIGNED)
+  loadedAt     DateTime?  @map("loaded_at")
+  departedAt   DateTime?  @map("departed_at")
+  deliveredAt  DateTime?  @map("delivered_at")
+  acceptedAt   DateTime?  @map("accepted_at")
+  acceptedById Int?       @map("accepted_by")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  request    DeliveryRequest @relation(fields: [requestId], references: [id])
+  driver     User            @relation("tripDriver", fields: [driverId], references: [id])
+  acceptedBy User?           @relation("tripAcceptor", fields: [acceptedById], references: [id])
+  point      Point           @relation(fields: [pointId], references: [id])
+  items      TripItem[]
+  movements  Movement[]
+  incidents  Incident[]
+
+  @@index([status])
+  @@index([driverId])
+  @@map("trips")
+}
+
+model TripItem {
+  id          Int  @id @default(autoincrement())
+  tripId      Int  @map("trip_id")
+  productId   Int  @map("product_id")
+  // утвердил менеджер
+  qtyPlanned  Int  @map("qty_planned")
+  // фактически загрузил водитель на складе
+  qtyLoaded   Int? @map("qty_loaded")
+  // выгрузил на точке по словам водителя
+  qtyUnloaded Int? @map("qty_unloaded")
+  // принял по словам продавца
+  qtyReceived Int? @map("qty_received")
+
+  trip    Trip    @relation(fields: [tripId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([tripId, productId])
+  @@map("trip_items")
+}
+
+// Инцидент: любое расхождение, которое должен увидеть и разобрать менеджер.
+model Incident {
+  id            Int              @id @default(autoincrement())
+  type          IncidentType
+  status        IncidentStatus   @default(OPEN)
+  pointId       Int?             @map("point_id")
+  // Ответственный и вторая сторона (например, водитель и продавец при приёмке)
+  userId        Int?             @map("user_id")
+  secondUserId  Int?             @map("second_user_id")
+  productId     Int?             @map("product_id")
+  // Знак показывает направление: минус - не хватает, плюс - лишнее
+  qty           Int              @default(0)
+  amount        Int              @default(0)
+  description   String           @default("")
+  tripId        Int?             @map("trip_id")
+  shiftId       Int?             @map("shift_id")
+  saleId        Int?             @map("sale_id")
+  outcome       IncidentOutcome?
+  // На кого записано по итогам разбора (для ночных расхождений выбирает менеджер)
+  chargedUserId Int?             @map("charged_user_id")
+  resolution    String?
+  resolvedById  Int?             @map("resolved_by")
+  resolvedAt    DateTime?        @map("resolved_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  point       Point?     @relation(fields: [pointId], references: [id])
+  user        User?      @relation("incidentUser", fields: [userId], references: [id])
+  secondUser  User?      @relation("incidentSecondUser", fields: [secondUserId], references: [id])
+  product     Product?   @relation(fields: [productId], references: [id])
+  trip        Trip?      @relation(fields: [tripId], references: [id])
+  resolvedBy  User?      @relation("incidentResolver", fields: [resolvedById], references: [id])
+  shift       Shift?     @relation(fields: [shiftId], references: [id])
+  sale        Sale?      @relation(fields: [saleId], references: [id])
+  chargedUser User?      @relation("incidentCharged", fields: [chargedUserId], references: [id])
+  movements   Movement[]
+
+  @@index([status])
+  @@map("incidents")
+}
+
+// Смена продавца на точке: от утреннего пересчёта до сдачи денег.
+model Shift {
+  id                  Int         @id @default(autoincrement())
+  pointId             Int         @map("point_id")
+  sellerId            Int         @map("seller_id")
+  status              ShiftStatus @default(OPEN)
+  openedAt            DateTime    @default(now()) @map("opened_at")
+  countedAt           DateTime?   @map("counted_at")
+  closedAt            DateTime?   @map("closed_at")
+  // Наличные: сколько должно быть по продажам и сколько продавец сдал по факту
+  cashExpected        Int?        @map("cash_expected")
+  cashActual          Int?        @map("cash_actual")
+  cashReceivedAt      DateTime?   @map("cash_received_at")
+  cashReceivedById    Int?        @map("cash_received_by")
+  stickersCheckedAt   DateTime?   @map("stickers_checked_at")
+  stickersCheckedById Int?        @map("stickers_checked_by")
+
+  point             Point             @relation(fields: [pointId], references: [id])
+  seller            User              @relation("shiftSeller", fields: [sellerId], references: [id])
+  cashReceivedBy    User?             @relation("shiftCashReceiver", fields: [cashReceivedById], references: [id])
+  stickersCheckedBy User?             @relation("shiftStickerChecker", fields: [stickersCheckedById], references: [id])
+  counts            StockCount[]
+  sales             Sale[]
+  movements         Movement[]
+  incidents         Incident[]
+  writeoffs         WriteoffRequest[]
+
+  @@index([pointId, openedAt])
+  @@index([sellerId])
+  @@map("shifts")
+}
+
+model StockCount {
+  id        Int       @id @default(autoincrement())
+  shiftId   Int       @map("shift_id")
+  kind      CountKind
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  shift Shift            @relation(fields: [shiftId], references: [id])
+  items StockCountItem[]
+
+  @@unique([shiftId, kind])
+  @@map("stock_counts")
+}
+
+model StockCountItem {
+  id          Int @id @default(autoincrement())
+  countId     Int @map("count_id")
+  productId   Int @map("product_id")
+  // учётный остаток на момент пересчёта
+  qtyExpected Int @map("qty_expected")
+  // сколько насчитал продавец
+  qtyActual   Int @map("qty_actual")
+  diff        Int
+
+  count   StockCount @relation(fields: [countId], references: [id])
+  product Product    @relation(fields: [productId], references: [id])
+
+  @@unique([countId, productId])
+  @@map("stock_count_items")
+}
+
+model Sale {
+  id                Int           @id @default(autoincrement())
+  shiftId           Int           @map("shift_id")
+  pointId           Int           @map("point_id")
+  sellerId          Int           @map("seller_id")
+  payment           PaymentMethod
+  total             Int
+  // Ключ от телефона продавца: повторная отправка той же продажи не создаёт вторую
+  clientKey         String?       @unique @map("client_key")
+  cancelStatus      CancelStatus  @default(NONE) @map("cancel_status")
+  cancelReason      String?       @map("cancel_reason")
+  cancelRequestedAt DateTime?     @map("cancel_requested_at")
+  cancelDecidedById Int?          @map("cancel_decided_by")
+  cancelDecidedAt   DateTime?     @map("cancel_decided_at")
+  cancelComment     String?       @map("cancel_comment")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  shift           Shift      @relation(fields: [shiftId], references: [id])
+  point           Point      @relation(fields: [pointId], references: [id])
+  seller          User       @relation("saleSeller", fields: [sellerId], references: [id])
+  cancelDecidedBy User?      @relation("saleCancelDecider", fields: [cancelDecidedById], references: [id])
+  items           SaleItem[]
+  movements       Movement[]
+  incidents       Incident[]
+
+  @@index([shiftId])
+  @@index([pointId, createdAt])
+  @@index([createdAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id                Int     @id @default(autoincrement())
+  saleId            Int     @map("sale_id")
+  productId         Int     @map("product_id")
+  qty               Int
+  // цена на стикере и фактическая цена продажи за штуку
+  stickerPrice      Int     @map("sticker_price")
+  price             Int
+  discountReason    String? @map("discount_reason")
+  // процент и сумма продавцу фиксируются в момент продажи
+  commissionPercent Int     @map("commission_percent")
+  commission        Int
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  // имя файла в папке загрузок
+  fileName     String   @unique @map("file_name")
+  mime         String
+  size         Int
+  uploadedById Int      @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  uploadedBy User              @relation(fields: [uploadedById], references: [id])
+  writeoffs  WriteoffRequest[]
+
+  @@map("attachments")
+}
+
+// Запрос на списание: товар остаётся на точке, пока менеджер не подтвердит.
+model WriteoffRequest {
+  id              Int            @id @default(autoincrement())
+  pointId         Int            @map("point_id")
+  shiftId         Int            @map("shift_id")
+  authorId        Int            @map("author_id")
+  productId       Int            @map("product_id")
+  qty             Int
+  reason          WriteoffReason
+  comment         String         @default("")
+  photoId         Int            @map("photo_id")
+  status          WriteoffStatus @default(PENDING)
+  decidedById     Int?           @map("decided_by")
+  decidedAt       DateTime?      @map("decided_at")
+  decisionComment String?        @map("decision_comment")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  point     Point      @relation(fields: [pointId], references: [id])
+  shift     Shift      @relation(fields: [shiftId], references: [id])
+  author    User       @relation("writeoffAuthor", fields: [authorId], references: [id])
+  product   Product    @relation(fields: [productId], references: [id])
+  photo     Attachment @relation(fields: [photoId], references: [id])
+  decidedBy User?      @relation("writeoffDecider", fields: [decidedById], references: [id])
+  movements Movement[]
+
+  @@index([status])
+  @@map("writeoff_requests")
+}
+
+// Уведомление менеджеру: показывается в системе и дублируется в Telegram.
+model Notification {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  type           String
+  title          String
+  body           String    @default("")
+  link           String    @default("")
+  readAt         DateTime? @map("read_at")
+  // когда отправлено в Telegram; пусто - ещё не отправлено
+  telegramSentAt DateTime? @map("telegram_sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}

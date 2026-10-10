@@ -1,0 +1,5 @@
+# HTTPS-сертификат Caddy получает и продлевает сам
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}

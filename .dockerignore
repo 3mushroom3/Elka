@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.pgdata
+uploads
+.env
+.env.*
+!.env.example
+docs

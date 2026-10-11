@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { Chip, PageHeader } from "@/components/ui";
 import { ExportLink } from "@/components/ExportLink";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatDateTime, formatMoney, formatTime, SHIFT_STATUS_LABEL } from "@/lib/labels";
+import {
+  formatDateTime,
+  formatMoney,
+  formatTime,
+  SHIFT_STATUS_LABEL,
+} from "@/lib/labels";
 
 export default async function ShiftsPage({
   searchParams,
@@ -14,7 +20,10 @@ export default async function ShiftsPage({
 
   const [points, sellers, shifts] = await Promise.all([
     prisma.point.findMany({ orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { role: "SELLER" }, orderBy: { fullName: "asc" } }),
+    prisma.user.findMany({
+      where: { role: "SELLER" },
+      orderBy: { fullName: "asc" },
+    }),
     prisma.shift.findMany({
       where: {
         pointId: Number(search.point) || undefined,
@@ -37,23 +46,35 @@ export default async function ShiftsPage({
   // Сумма расхождений пересчёта: отдельно недостача и излишек
   const diffText = (items: { diff: number }[] | undefined) => {
     if (!items) return "–";
-    const minus = items.filter((i) => i.diff < 0).reduce((s, i) => s + i.diff, 0);
-    const plus = items.filter((i) => i.diff > 0).reduce((s, i) => s + i.diff, 0);
+    const minus = items
+      .filter((i) => i.diff < 0)
+      .reduce((s, i) => s + i.diff, 0);
+    const plus = items
+      .filter((i) => i.diff > 0)
+      .reduce((s, i) => s + i.diff, 0);
     if (!minus && !plus) return "0";
-    return [minus && String(minus), plus && `+${plus}`].filter(Boolean).join(" / ");
+    return [minus && String(minus), plus && `+${plus}`]
+      .filter(Boolean)
+      .join(" / ");
   };
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Смены и пересчёты</h1>
+      <PageHeader
+        title="Смены и пересчёты"
+        hint="Каждая смена: пересчёты утром и вечером, продажи и сданные деньги. Нажмите на номер, чтобы открыть подробности."
+      >
         <ExportLink report="shifts" params={search} />
-      </div>
+      </PageHeader>
 
       <form className="card mb-6 grid gap-3 sm:grid-cols-3" method="get">
         <div>
           <label className="label">Точка</label>
-          <select name="point" defaultValue={search.point ?? ""} className="input">
+          <select
+            name="point"
+            defaultValue={search.point ?? ""}
+            className="input"
+          >
             <option value="">Все</option>
             {points.map((p) => (
               <option key={p.id} value={p.id}>
@@ -64,7 +85,11 @@ export default async function ShiftsPage({
         </div>
         <div>
           <label className="label">Продавец</label>
-          <select name="seller" defaultValue={search.seller ?? ""} className="input">
+          <select
+            name="seller"
+            defaultValue={search.seller ?? ""}
+            className="input"
+          >
             <option value="">Все</option>
             {sellers.map((s) => (
               <option key={s.id} value={s.id}>
@@ -86,55 +111,102 @@ export default async function ShiftsPage({
             <thead>
               <tr>
                 <th>№</th>
-                <th>Открыта</th>
-                <th>Закрыта</th>
-                <th>Точка</th>
-                <th>Продавец</th>
+                <th>Когда</th>
+                <th>Точка и продавец</th>
                 <th>Статус</th>
-                <th className="num">Утро, расх.</th>
-                <th className="num">Вечер, расх.</th>
+                <th className="num">Расхождение за ночь</th>
+                <th className="num">Расхождение за день</th>
                 <th className="num">Продано</th>
                 <th className="num">Выручка</th>
-                <th className="num">Наличные, расх.</th>
-                <th>Проверено</th>
+                <th className="num">Расхождение наличных</th>
+                <th>Деньги и стикеры</th>
               </tr>
             </thead>
             <tbody>
               {shifts.map((s) => {
-                const morning = s.counts.find((c) => c.kind === "MORNING")?.items;
-                const evening = s.counts.find((c) => c.kind === "EVENING")?.items;
+                const morning = s.counts.find(
+                  (c) => c.kind === "MORNING",
+                )?.items;
+                const evening = s.counts.find(
+                  (c) => c.kind === "EVENING",
+                )?.items;
                 const cashDiff =
-                  s.cashActual === null ? null : s.cashActual - (s.cashExpected ?? 0);
-                const bad = (text: string) => (text !== "0" && text !== "–" ? "text-red-600" : "");
+                  s.cashActual === null
+                    ? null
+                    : s.cashActual - (s.cashExpected ?? 0);
+                const bad = (text: string) =>
+                  text !== "0" && text !== "–" ? "text-red-600" : "";
                 return (
                   <tr key={s.id}>
                     <td>
-                      <Link href={`/manager/shifts/${s.id}`} className="text-emerald-700 underline">
+                      <Link
+                        href={`/manager/shifts/${s.id}`}
+                        className="text-emerald-700 underline"
+                      >
                         {s.id}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap">{formatDateTime(s.openedAt)}</td>
-                    <td className="whitespace-nowrap">{s.closedAt ? formatTime(s.closedAt) : ""}</td>
-                    <td>{s.point.name}</td>
-                    <td>{s.seller.fullName}</td>
-                    <td>{SHIFT_STATUS_LABEL[s.status]}</td>
-                    <td className={`num font-semibold ${bad(diffText(morning))}`}>
+                    <td>
+                      {formatDateTime(s.openedAt)}
+                      {s.closedAt && ` – ${formatTime(s.closedAt)}`}
+                    </td>
+                    <td>
+                      <span className="font-medium">{s.point.name}</span>
+                      <span className="block text-sm text-zinc-500">
+                        {s.seller.fullName}
+                      </span>
+                    </td>
+                    <td>
+                      <Chip
+                        tone={
+                          s.status === "OPEN"
+                            ? "green"
+                            : s.status === "COUNTED"
+                              ? "amber"
+                              : "gray"
+                        }
+                      >
+                        {SHIFT_STATUS_LABEL[s.status]}
+                      </Chip>
+                    </td>
+                    <td
+                      className={`num font-semibold ${bad(diffText(morning))}`}
+                    >
                       {diffText(morning)}
                     </td>
-                    <td className={`num font-semibold ${bad(diffText(evening))}`}>
+                    <td
+                      className={`num font-semibold ${bad(diffText(evening))}`}
+                    >
                       {diffText(evening)}
                     </td>
                     <td className="num">
-                      {s.sales.reduce((n, sale) => n + sale.items.reduce((q, i) => q + i.qty, 0), 0)}
+                      {s.sales.reduce(
+                        (n, sale) =>
+                          n + sale.items.reduce((q, i) => q + i.qty, 0),
+                        0,
+                      )}
                     </td>
-                    <td className="num">{formatMoney(s.sales.reduce((n, x) => n + x.total, 0))}</td>
-                    <td className={`num font-semibold ${cashDiff ? "text-red-600" : ""}`}>
+                    <td className="num">
+                      {formatMoney(s.sales.reduce((n, x) => n + x.total, 0))}
+                    </td>
+                    <td
+                      className={`num font-semibold ${cashDiff ? "text-red-600" : ""}`}
+                    >
                       {cashDiff === null ? "–" : formatMoney(cashDiff)}
                     </td>
-                    <td className="whitespace-nowrap">
-                      {s.status !== "CLOSED"
-                        ? ""
-                        : `${s.cashReceivedAt ? "✓" : "✗"} деньги · ${s.stickersCheckedAt ? "✓" : "✗"} стикеры`}
+                    <td>
+                      {s.status !== "CLOSED" ? null : s.cashReceivedAt &&
+                        s.stickersCheckedAt ? (
+                        <Chip tone="green">Принято</Chip>
+                      ) : (
+                        <Chip tone="amber">
+                          {!s.cashReceivedAt && !s.stickersCheckedAt
+                            ? "Не принято"
+                            : s.cashReceivedAt
+                              ? "Нет стикеров"
+                              : "Нет денег"}
+                        </Chip>
+                      )}
                     </td>
                   </tr>
                 );
@@ -143,8 +215,8 @@ export default async function ShiftsPage({
           </table>
         )}
         <p className="mt-3 text-sm text-zinc-500">
-          Утреннее расхождение: разница с вечером прошлой смены (ночная). Вечернее: разница с
-          расчётом за день. Показаны последние 100 смен.
+          Утреннее расхождение: разница с вечером прошлой смены (ночная).
+          Вечернее: разница с расчётом за день. Показаны последние 100 смен.
         </p>
       </section>
     </>

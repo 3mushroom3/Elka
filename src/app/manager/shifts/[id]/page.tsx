@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Chip } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/ActionForm";
 import { requireRole } from "@/lib/auth";
@@ -13,7 +14,11 @@ import {
 import { shiftSummary } from "@/lib/shift-summary";
 import { confirmShiftCheckAction } from "../../actions";
 
-export default async function ShiftPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ShiftPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   await requireRole("MANAGER");
   const shiftId = Number((await params).id);
   const shift = Number.isInteger(shiftId)
@@ -27,12 +32,17 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
           counts: {
             orderBy: { id: "asc" },
             include: {
-              items: { include: { product: { select: { name: true } } }, orderBy: { id: "asc" } },
+              items: {
+                include: { product: { select: { name: true } } },
+                orderBy: { id: "asc" },
+              },
             },
           },
           sales: {
             orderBy: { id: "asc" },
-            include: { items: { include: { product: { select: { name: true } } } } },
+            include: {
+              items: { include: { product: { select: { name: true } } } },
+            },
           },
         },
       })
@@ -54,7 +64,10 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
     .filter((sale) => sale.cancelStatus !== "CANCELLED")
     .flatMap((sale) => sale.items)
     .reduce((n, i) => n + i.stickerPrice * i.qty, 0);
-  const cashDiff = shift.cashActual === null ? null : shift.cashActual - (shift.cashExpected ?? 0);
+  const cashDiff =
+    shift.cashActual === null
+      ? null
+      : shift.cashActual - (shift.cashExpected ?? 0);
 
   return (
     <>
@@ -90,8 +103,8 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
         {shift.counts.map((c) => (
           <section key={c.id} className="card overflow-x-auto">
             <h2 className="h2">
-              {c.kind === "MORNING" ? "Утренний пересчёт" : "Вечерний пересчёт"} ·{" "}
-              {formatTime(c.createdAt)}
+              {c.kind === "MORNING" ? "Утренний пересчёт" : "Вечерний пересчёт"}{" "}
+              · {formatTime(c.createdAt)}
             </h2>
             <table className="table">
               <thead>
@@ -105,18 +118,42 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
                 </tr>
               </thead>
               <tbody>
-                {c.items.map((i) => (
-                  <tr key={i.id}>
-                    <td>{i.product.name}</td>
-                    <td className="num">{i.qtyExpected}</td>
-                    <td className="num">{i.qtyActual}</td>
-                    <td className={`num font-semibold ${i.diff ? "text-red-600" : "text-zinc-300"}`}>
-                      {i.diff > 0 ? `+${i.diff}` : i.diff}
-                    </td>
-                  </tr>
-                ))}
+                {c.items
+                  .filter((i) => i.qtyExpected !== 0 || i.qtyActual !== 0)
+                  .map((i) => (
+                    <tr key={i.id}>
+                      <td className="font-medium">{i.product.name}</td>
+                      <td className="num">{i.qtyExpected}</td>
+                      <td className="num">{i.qtyActual}</td>
+                      <td className="num">
+                        {i.diff === 0 ? (
+                          <span className="text-emerald-600">сошлось</span>
+                        ) : (
+                          <Chip tone={i.diff < 0 ? "red" : "amber"}>
+                            {i.diff > 0 ? `+${i.diff}` : i.diff}
+                          </Chip>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
+            {/* Виды, которых на точке не было и нет, не занимают место в таблице */}
+            {(() => {
+              const empty = c.items.filter(
+                (i) => i.qtyExpected === 0 && i.qtyActual === 0,
+              );
+              return empty.length === c.items.length ? (
+                <p className="mt-2 text-sm text-zinc-500">
+                  Точка была пустой: по всем видам 0.
+                </p>
+              ) : empty.length > 0 ? (
+                <p className="mt-2 text-sm text-zinc-500">
+                  Ещё {empty.length} видов не было на точке: по ним 0,
+                  расхождений нет.
+                </p>
+              ) : null;
+            })()}
           </section>
         ))}
       </div>
@@ -131,7 +168,9 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
           <dt>Наличными по продажам</dt>
           <dd className="num">{formatMoney(summary.byPayment.CASH)}</dd>
           <dt>Наличными сдано</dt>
-          <dd className="num">{shift.cashActual === null ? "–" : formatMoney(shift.cashActual)}</dd>
+          <dd className="num">
+            {shift.cashActual === null ? "–" : formatMoney(shift.cashActual)}
+          </dd>
           <dt className="font-semibold">Расхождение</dt>
           <dd className={`num font-semibold ${cashDiff ? "text-red-600" : ""}`}>
             {cashDiff === null ? "–" : formatMoney(cashDiff)}
@@ -147,7 +186,10 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
                   {formatDateTime(shift.cashReceivedAt)}
                 </p>
               ) : (
-                <ActionForm action={confirmShiftCheckAction} submitLabel="Наличные получены">
+                <ActionForm
+                  action={confirmShiftCheckAction}
+                  submitLabel="Наличные получены"
+                >
                   <input type="hidden" name="shiftId" value={shift.id} />
                   <input type="hidden" name="what" value="cash" />
                 </ActionForm>
@@ -160,7 +202,10 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
                   {formatDateTime(shift.stickersCheckedAt)}
                 </p>
               ) : (
-                <ActionForm action={confirmShiftCheckAction} submitLabel="Стикеры сверены">
+                <ActionForm
+                  action={confirmShiftCheckAction}
+                  submitLabel="Стикеры сверены"
+                >
                   <input type="hidden" name="shiftId" value={shift.id} />
                   <input type="hidden" name="what" value="stickers" />
                 </ActionForm>
@@ -169,8 +214,8 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
         <p className="mt-3 text-sm text-zinc-500">
-          Стикеров у продавца должно быть {summary.qty} шт. на сумму {formatMoney(stickerSum)}.
-          Выручка меньше этой суммы на размер скидок.
+          Стикеров у продавца должно быть {summary.qty} шт. на сумму{" "}
+          {formatMoney(stickerSum)}. Выручка меньше этой суммы на размер скидок.
         </p>
       </section>
 
@@ -198,7 +243,11 @@ export default async function ShiftPage({ params }: { params: Promise<{ id: stri
                 sale.items.map((i) => (
                   <tr
                     key={i.id}
-                    className={sale.cancelStatus === "CANCELLED" ? "text-zinc-400 line-through" : ""}
+                    className={
+                      sale.cancelStatus === "CANCELLED"
+                        ? "text-zinc-400 line-through"
+                        : ""
+                    }
                   >
                     <td>{sale.id}</td>
                     <td>{formatTime(sale.createdAt)}</td>

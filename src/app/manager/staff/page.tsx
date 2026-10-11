@@ -1,4 +1,5 @@
 import { Role } from "@prisma/client";
+import { PageHeader } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -7,7 +8,13 @@ import { createUserAction, updateUserAction } from "../actions";
 
 type PointOption = { id: number; name: string };
 
-function PointChecks({ points, selected }: { points: PointOption[]; selected: number[] }) {
+function PointChecks({
+  points,
+  selected,
+}: {
+  points: PointOption[];
+  selected: number[];
+}) {
   if (points.length === 0) {
     return <p className="text-sm text-zinc-500">Сначала создайте точки.</p>;
   }
@@ -44,7 +51,10 @@ export default async function StaffPage() {
 
   return (
     <>
-      <h1 className="h1">Сотрудники</h1>
+      <PageHeader
+        title="Сотрудники"
+        hint="Аккаунты продавцов, водителей и менеджеров. Логин и пароль выдаёте вы."
+      />
 
       <div className="mb-6 flex flex-col gap-3">
         {users.map((u) => (
@@ -54,19 +64,35 @@ export default async function StaffPage() {
               <span className="ml-2 text-sm text-zinc-500">
                 {ROLE_LABEL[u.role]} · логин {u.login}
               </span>
-              {!u.isActive && <span className="ml-2 text-sm text-red-600">отключён</span>}
+              {!u.isActive && (
+                <span className="ml-2 text-sm text-red-600">отключён</span>
+              )}
             </summary>
-            <ActionForm action={updateUserAction} submitLabel="Сохранить" className="mt-4">
+            <ActionForm
+              action={updateUserAction}
+              submitLabel="Сохранить"
+              className="mt-4"
+            >
               <input type="hidden" name="id" value={u.id} />
               <label className="label">Имя</label>
-              <input name="fullName" defaultValue={u.fullName} className="input mb-3" required />
+              <input
+                name="fullName"
+                defaultValue={u.fullName}
+                className="input mb-3"
+                required
+              />
               {u.role === Role.SELLER && (
                 <div className="mb-3">
                   <p className="label">Точки, на которых работает</p>
-                  <PointChecks points={points} selected={u.points.map((p) => p.pointId)} />
+                  <PointChecks
+                    points={points}
+                    selected={u.points.map((p) => p.pointId)}
+                  />
                 </div>
               )}
-              <label className="label">Новый пароль (оставьте пустым, чтобы не менять)</label>
+              <label className="label">
+                Новый пароль (оставьте пустым, чтобы не менять)
+              </label>
               <input
                 name="newPassword"
                 type="text"
@@ -78,7 +104,11 @@ export default async function StaffPage() {
                 <input type="hidden" name="isActive" value="on" />
               ) : (
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" name="isActive" defaultChecked={u.isActive} />
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    defaultChecked={u.isActive}
+                  />
                   Доступ в систему разрешён
                 </label>
               )}
@@ -89,7 +119,11 @@ export default async function StaffPage() {
 
       <section className="card max-w-xl">
         <h2 className="h2">Новый сотрудник</h2>
-        <ActionForm action={createUserAction} submitLabel="Создать аккаунт" resetOnSuccess>
+        <ActionForm
+          action={createUserAction}
+          submitLabel="Создать аккаунт"
+          resetOnSuccess
+        >
           <label className="label">Имя</label>
           <input name="fullName" className="input mb-3" required />
           <label className="label">Роль</label>

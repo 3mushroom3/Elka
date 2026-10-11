@@ -1,4 +1,5 @@
 import { ExportLink } from "@/components/ExportLink";
+import { PageHeader } from "@/components/ui";
 import { type ReportRow, salesReport } from "@/domain/reports";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -68,16 +69,29 @@ export default async function ReportsPage({
 
   return (
     <>
-      <h1 className="h1">Отчёты</h1>
+      <PageHeader
+        title="Отчёты"
+        hint="Сколько продано, выручка и зарплата продавцов за выбранный период."
+      />
 
       <form className="card mb-6 grid gap-3 sm:grid-cols-4" method="get">
         <div>
           <label className="label">С даты</label>
-          <input type="date" name="from" defaultValue={search.from} className="input" />
+          <input
+            type="date"
+            name="from"
+            defaultValue={search.from}
+            className="input"
+          />
         </div>
         <div>
           <label className="label">По дату</label>
-          <input type="date" name="to" defaultValue={search.to} className="input" />
+          <input
+            type="date"
+            name="to"
+            defaultValue={search.to}
+            className="input"
+          />
         </div>
         <div className="flex items-end">
           <button className="btn-secondary min-h-11 w-full">Показать</button>
@@ -104,23 +118,46 @@ export default async function ReportsPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ReportTable title="По точкам" first="Точка" rows={report.byPoint} total={report.total} />
+        <ReportTable
+          title="По точкам"
+          first="Точка"
+          rows={report.byPoint}
+          total={report.total}
+        />
         <ReportTable
           title="По продавцам (зарплата)"
           first="Продавец"
           rows={report.bySeller}
           total={report.total}
         />
-        <ReportTable title="По дням" first="День" rows={report.byDay} total={report.total} />
-        <ReportTable title="По видам" first="Вид" rows={report.byProduct} total={report.total} />
+        <ReportTable
+          title="По дням"
+          first="День"
+          rows={report.byDay}
+          total={report.total}
+        />
+        <ReportTable
+          title="По видам"
+          first="Вид"
+          rows={report.byProduct}
+          total={report.total}
+        />
       </div>
 
       <section className="card mt-6">
         <h2 className="h2">Другие выгрузки</h2>
         <div className="flex flex-wrap gap-3">
-          <ExportLink report="sales" params={filters} label="Все продажи построчно" />
+          <ExportLink
+            report="sales"
+            params={filters}
+            label="Все продажи построчно"
+          />
           <ExportLink report="shifts" label="Смены и пересчёты" />
-          <ExportLink report="movements" params={filters} label="Журнал движений" />
+          <ExportLink
+            report="movements"
+            params={filters}
+            label="Журнал движений"
+          />
           <ExportLink report="shortages" label="Недостачи и инциденты" />
           <ExportLink report="stock" label="Остатки по местам" />
         </div>

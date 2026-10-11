@@ -1,4 +1,5 @@
 import { MovementType, type Prisma } from "@prisma/client";
+import { PageHeader } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -20,7 +21,9 @@ export default async function MovementsPage({
   const locationId = Number(search.location) || undefined;
   const productId = Number(search.product) || undefined;
   const type =
-    search.type && search.type in MovementType ? (search.type as MovementType) : undefined;
+    search.type && search.type in MovementType
+      ? (search.type as MovementType)
+      : undefined;
 
   const where: Prisma.MovementWhereInput = {
     productId,
@@ -54,12 +57,19 @@ export default async function MovementsPage({
 
   return (
     <>
-      <h1 className="h1">Журнал движений</h1>
+      <PageHeader
+        title="Журнал движений"
+        hint="Каждое перемещение товара: кто, откуда, куда и когда. Записи нельзя изменить или удалить, ошибка исправляется новой записью."
+      />
 
       <form className="card mb-6 grid gap-3 sm:grid-cols-4" method="get">
         <div>
           <label className="label">Место</label>
-          <select name="location" defaultValue={search.location ?? ""} className="input">
+          <select
+            name="location"
+            defaultValue={search.location ?? ""}
+            className="input"
+          >
             <option value="">Все</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
@@ -70,7 +80,11 @@ export default async function MovementsPage({
         </div>
         <div>
           <label className="label">Вид</label>
-          <select name="product" defaultValue={search.product ?? ""} className="input">
+          <select
+            name="product"
+            defaultValue={search.product ?? ""}
+            className="input"
+          >
             <option value="">Все</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
@@ -81,7 +95,11 @@ export default async function MovementsPage({
         </div>
         <div>
           <label className="label">Тип</label>
-          <select name="type" defaultValue={search.type ?? ""} className="input">
+          <select
+            name="type"
+            defaultValue={search.type ?? ""}
+            className="input"
+          >
             <option value="">Все</option>
             {Object.values(MovementType).map((t) => (
               <option key={t} value={t}>
@@ -117,8 +135,12 @@ export default async function MovementsPage({
               {movements.map((m) => (
                 <tr key={m.id}>
                   <td>{m.id}</td>
-                  <td className="whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
-                  <td className="whitespace-nowrap">{MOVEMENT_LABEL[m.type]}</td>
+                  <td className="whitespace-nowrap">
+                    {formatDateTime(m.createdAt)}
+                  </td>
+                  <td className="whitespace-nowrap">
+                    {MOVEMENT_LABEL[m.type]}
+                  </td>
                   <td>{m.product.name}</td>
                   <td className="num">{m.qty}</td>
                   <td>{locationName(m.from)}</td>
@@ -132,8 +154,8 @@ export default async function MovementsPage({
         )}
         {count > movements.length && (
           <p className="mt-3 text-sm text-zinc-500">
-            Показаны последние {movements.length} из {count}. Уточните фильтр, чтобы увидеть
-            более ранние записи.
+            Показаны последние {movements.length} из {count}. Уточните фильтр,
+            чтобы увидеть более ранние записи.
           </p>
         )}
       </section>
@@ -141,8 +163,8 @@ export default async function MovementsPage({
       <section className="card max-w-xl">
         <h2 className="h2">Корректировка</h2>
         <p className="mb-3 text-sm text-zinc-500">
-          Записи журнала нельзя изменить или удалить. Ошибка исправляется новой записью с причиной;
-          исходная запись остаётся в журнале.
+          Записи журнала нельзя изменить или удалить. Ошибка исправляется новой
+          записью с причиной; исходная запись остаётся в журнале.
         </p>
         <ActionForm
           action={correctionAction}
@@ -152,7 +174,9 @@ export default async function MovementsPage({
         >
           <label className="label">Что исправляем</label>
           <select name="kind" className="input mb-3" required>
-            <option value="INVENTORY">Недостача или излишек (по факту пересчёта)</option>
+            <option value="INVENTORY">
+              Недостача или излишек (по факту пересчёта)
+            </option>
             <option value="RECEIPT_ERROR">Ошибка при вводе прихода</option>
           </select>
           <label className="label">Место</label>

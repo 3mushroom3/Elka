@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -20,7 +21,10 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <h1 className="h1">Уведомления</h1>
+      <PageHeader
+        title="Уведомления"
+        hint="Всё, что произошло и требует вашего внимания."
+      />
 
       <section className="card mb-6">
         {unread > 0 && (
@@ -65,14 +69,15 @@ export default async function NotificationsPage() {
         <ol className="mb-3 list-decimal pl-5 text-sm text-zinc-600">
           <li>Откройте в Telegram бота вашей системы и нажмите «Запустить».</li>
           <li>
-            Узнайте свой числовой ID: напишите боту @userinfobot, он пришлёт его в ответ.
+            Узнайте свой числовой ID: напишите боту @userinfobot, он пришлёт его
+            в ответ.
           </li>
           <li>Введите ID ниже и сохраните. Придёт проверочное сообщение.</li>
         </ol>
         {!telegramConfigured() && (
           <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            На сервере не задан токен бота (TELEGRAM_BOT_TOKEN), поэтому сообщения пока не
-            отправляются. Уведомления внутри системы работают.
+            На сервере не задан токен бота (TELEGRAM_BOT_TOKEN), поэтому
+            сообщения пока не отправляются. Уведомления внутри системы работают.
           </p>
         )}
         <ActionForm action={saveTelegramAction} submitLabel="Сохранить">

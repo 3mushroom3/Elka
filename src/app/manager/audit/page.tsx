@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth";
+import { PageHeader } from "@/components/ui";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/labels";
 
@@ -50,7 +51,10 @@ export default async function AuditPage() {
 
   return (
     <>
-      <h1 className="h1">Журнал действий</h1>
+      <PageHeader
+        title="Журнал действий"
+        hint="Кто, что и когда делал в системе. Записи нельзя изменить или удалить."
+      />
       <section className="card overflow-x-auto">
         <table className="table">
           <thead>
@@ -64,7 +68,9 @@ export default async function AuditPage() {
           <tbody>
             {entries.map((e) => (
               <tr key={e.id}>
-                <td className="whitespace-nowrap">{formatDateTime(e.createdAt)}</td>
+                <td className="whitespace-nowrap">
+                  {formatDateTime(e.createdAt)}
+                </td>
                 <td className="whitespace-nowrap">{e.user?.fullName ?? ""}</td>
                 <td className="whitespace-nowrap">
                   {ACTION_LABEL[e.action] ?? e.action}
@@ -77,7 +83,9 @@ export default async function AuditPage() {
             ))}
           </tbody>
         </table>
-        <p className="mt-3 text-sm text-zinc-500">Показаны последние 300 записей.</p>
+        <p className="mt-3 text-sm text-zinc-500">
+          Показаны последние 300 записей.
+        </p>
       </section>
     </>
   );

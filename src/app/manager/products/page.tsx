@@ -1,4 +1,5 @@
 import { type Product, ProductCategory } from "@prisma/client";
+import { PageHeader } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { requireRole } from "@/lib/auth";
 import { CATEGORY_LABEL } from "@/lib/labels";
@@ -9,7 +10,12 @@ function ProductFields({ product }: { product?: Product }) {
   return (
     <>
       <label className="label">Название</label>
-      <input name="name" defaultValue={product?.name} className="input mb-3" required />
+      <input
+        name="name"
+        defaultValue={product?.name}
+        className="input mb-3"
+        required
+      />
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="label">Группа</label>
@@ -57,7 +63,11 @@ function ProductFields({ product }: { product?: Product }) {
         className="input"
       />
       <label className="mt-3 flex items-center gap-2">
-        <input type="checkbox" name="isCountable" defaultChecked={product?.isCountable ?? true} />
+        <input
+          type="checkbox"
+          name="isCountable"
+          defaultChecked={product?.isCountable ?? true}
+        />
         Пересчитывается утром и вечером
       </label>
     </>
@@ -70,7 +80,10 @@ export default async function ProductsPage() {
 
   return (
     <>
-      <h1 className="h1">Виды товара</h1>
+      <PageHeader
+        title="Виды товара"
+        hint="Что продаём, какой процент получает продавец и какие цены показывать кнопками при продаже."
+      />
 
       <div className="mb-6 flex flex-col gap-3">
         {products.map((p) => (
@@ -79,15 +92,26 @@ export default async function ProductsPage() {
               <span className="font-semibold">{p.name}</span>
               <span className="ml-2 text-sm text-zinc-500">
                 {CATEGORY_LABEL[p.category]} · продавцу {p.commissionPercent}%
-                {p.quickPrices.length > 0 && ` · цены: ${p.quickPrices.join(", ")}`}
+                {p.quickPrices.length > 0 &&
+                  ` · цены: ${p.quickPrices.join(", ")}`}
               </span>
-              {!p.isActive && <span className="ml-2 text-sm text-red-600">скрыт</span>}
+              {!p.isActive && (
+                <span className="ml-2 text-sm text-red-600">скрыт</span>
+              )}
             </summary>
-            <ActionForm action={updateProductAction} submitLabel="Сохранить" className="mt-4">
+            <ActionForm
+              action={updateProductAction}
+              submitLabel="Сохранить"
+              className="mt-4"
+            >
               <input type="hidden" name="id" value={p.id} />
               <ProductFields product={p} />
               <label className="mt-3 flex items-center gap-2">
-                <input type="checkbox" name="isActive" defaultChecked={p.isActive} />
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  defaultChecked={p.isActive}
+                />
                 Используется (виден продавцам и в заявках)
               </label>
             </ActionForm>
@@ -97,7 +121,11 @@ export default async function ProductsPage() {
 
       <section className="card max-w-xl">
         <h2 className="h2">Новый вид</h2>
-        <ActionForm action={createProductAction} submitLabel="Добавить вид" resetOnSuccess>
+        <ActionForm
+          action={createProductAction}
+          submitLabel="Добавить вид"
+          resetOnSuccess
+        >
           <ProductFields />
         </ActionForm>
       </section>

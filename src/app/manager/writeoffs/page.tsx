@@ -1,7 +1,12 @@
 import { ActionForm } from "@/components/ActionForm";
+import { PageHeader } from "@/components/ui";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatDateTime, WRITEOFF_REASON_LABEL, WRITEOFF_STATUS_LABEL } from "@/lib/labels";
+import {
+  formatDateTime,
+  WRITEOFF_REASON_LABEL,
+  WRITEOFF_STATUS_LABEL,
+} from "@/lib/labels";
 import { decideWriteoffAction } from "../actions";
 
 export default async function WriteoffsPage() {
@@ -28,10 +33,15 @@ export default async function WriteoffsPage() {
 
   return (
     <>
-      <h1 className="h1">Списания</h1>
+      <PageHeader
+        title="Списания"
+        hint="Продавец просит списать брак, поломку или кражу. Посмотрите фото и решите."
+      />
 
       {pending.length === 0 && (
-        <p className="card mb-6 text-sm text-zinc-500">Запросов на списание нет.</p>
+        <p className="card mb-6 text-sm text-zinc-500">
+          Запросов на списание нет.
+        </p>
       )}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         {pending.map((w) => (
@@ -40,10 +50,15 @@ export default async function WriteoffsPage() {
               {w.product.name} × {w.qty} · {WRITEOFF_REASON_LABEL[w.reason]}
             </h2>
             <p className="-mt-2 text-sm text-zinc-500">
-              №{w.id} · {w.point.name} · {w.author.fullName} · {formatDateTime(w.createdAt)}
+              №{w.id} · {w.point.name} · {w.author.fullName} ·{" "}
+              {formatDateTime(w.createdAt)}
             </p>
             {w.comment && <p className="mt-2">«{w.comment}»</p>}
-            <a href={`/api/photo/${w.photoId}`} target="_blank" rel="noreferrer">
+            <a
+              href={`/api/photo/${w.photoId}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- фото отдаётся через проверку доступа */}
               <img
                 src={`/api/photo/${w.photoId}`}
@@ -63,16 +78,23 @@ export default async function WriteoffsPage() {
               <input type="hidden" name="decision" value="approve" />
             </ActionForm>
             <details className="mt-3">
-              <summary className="cursor-pointer text-sm text-red-700">Отказать</summary>
-              <ActionForm action={decideWriteoffAction} submitLabel="Отказать в списании">
+              <summary className="cursor-pointer text-sm text-red-700">
+                Отказать
+              </summary>
+              <ActionForm
+                action={decideWriteoffAction}
+                submitLabel="Отказать в списании"
+              >
                 <input type="hidden" name="writeoffId" value={w.id} />
                 <input type="hidden" name="decision" value="reject" />
-                <label className="label mt-2">Причина отказа (её увидит продавец)</label>
+                <label className="label mt-2">
+                  Причина отказа (её увидит продавец)
+                </label>
                 <input name="comment" className="input" required />
               </ActionForm>
               <p className="mt-2 text-sm text-zinc-500">
-                После отказа товар остаётся на учёте точки. Если вечером его не окажется, это
-                будет недостача продавца.
+                После отказа товар остаётся на учёте точки. Если вечером его не
+                окажется, это будет недостача продавца.
               </p>
             </details>
           </section>
@@ -101,7 +123,9 @@ export default async function WriteoffsPage() {
               {history.map((w) => (
                 <tr key={w.id}>
                   <td>{w.id}</td>
-                  <td className="whitespace-nowrap">{formatDateTime(w.createdAt)}</td>
+                  <td className="whitespace-nowrap">
+                    {formatDateTime(w.createdAt)}
+                  </td>
                   <td>{w.point.name}</td>
                   <td>{w.author.fullName}</td>
                   <td className="whitespace-nowrap">
@@ -109,10 +133,18 @@ export default async function WriteoffsPage() {
                   </td>
                   <td>
                     {WRITEOFF_REASON_LABEL[w.reason]}
-                    {w.comment && <span className="block text-zinc-500">{w.comment}</span>}
+                    {w.comment && (
+                      <span className="block text-zinc-500">{w.comment}</span>
+                    )}
                   </td>
                   <td>
-                    <span className={w.status === "REJECTED" ? "text-red-600" : "text-emerald-700"}>
+                    <span
+                      className={
+                        w.status === "REJECTED"
+                          ? "text-red-600"
+                          : "text-emerald-700"
+                      }
+                    >
                       {WRITEOFF_STATUS_LABEL[w.status]}
                     </span>
                     <span className="block text-zinc-500">

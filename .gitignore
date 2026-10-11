@@ -51,3 +51,6 @@ next-env.d.ts
 # server backups
 /backups
 !.env.production.example
+
+# second (verification) instance build output
+/.next-e2e

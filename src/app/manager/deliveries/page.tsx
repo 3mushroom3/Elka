@@ -1,8 +1,9 @@
 import { ActionForm } from "@/components/ActionForm";
+import { Chip, PageHeader, TripSteps } from "@/components/ui";
 import { getAllBalances } from "@/domain/ledger";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatDateTime, TRIP_STATUS_LABEL } from "@/lib/labels";
+import { formatDateTime } from "@/lib/labels";
 import { listProducts } from "@/lib/queries";
 import { acceptReturnAction, cancelTripAction } from "../actions";
 
@@ -14,35 +15,43 @@ export default async function DeliveriesPage() {
     driver: { select: { fullName: true } },
     point: { select: { name: true } },
     acceptedBy: { select: { fullName: true } },
-    items: { include: { product: { select: { name: true } } }, orderBy: { id: "asc" } },
+    items: {
+      include: { product: { select: { name: true } } },
+      orderBy: { id: "asc" },
+    },
   } as const;
 
-  const [active, finished, driverLocations, balances, products] = await Promise.all([
-    prisma.trip.findMany({
-      where: { status: { in: ["ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"] } },
-      orderBy: { id: "asc" },
-      include: tripInclude,
-    }),
-    prisma.trip.findMany({
-      where: { status: { in: ["ACCEPTED", "CANCELLED"] } },
-      orderBy: { id: "desc" },
-      take: 30,
-      include: tripInclude,
-    }),
-    prisma.location.findMany({
-      where: { type: "DRIVER" },
-      include: { driver: { select: { id: true, fullName: true } } },
-    }),
-    getAllBalances(prisma),
-    listProducts(false),
-  ]);
+  const [active, finished, driverLocations, balances, products] =
+    await Promise.all([
+      prisma.trip.findMany({
+        where: {
+          status: { in: ["ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"] },
+        },
+        orderBy: { id: "asc" },
+        include: tripInclude,
+      }),
+      prisma.trip.findMany({
+        where: { status: { in: ["ACCEPTED", "CANCELLED"] } },
+        orderBy: { id: "desc" },
+        take: 30,
+        include: tripInclude,
+      }),
+      prisma.location.findMany({
+        where: { type: "DRIVER" },
+        include: { driver: { select: { id: true, fullName: true } } },
+      }),
+      getAllBalances(prisma),
+      listProducts(false),
+    ]);
 
   // Что сейчас числится за каждым водителем
   const onDrivers = driverLocations
     .map((loc) => ({
       driver: loc.driver!,
       // Рейсы, по которым товар ещё законно в машине
-      busy: active.some((t) => t.driverId === loc.driver!.id && t.status !== "ASSIGNED"),
+      busy: active.some(
+        (t) => t.driverId === loc.driver!.id && t.status !== "ASSIGNED",
+      ),
       items: products
         .map((p) => ({ product: p, qty: balances.get(loc.id)?.get(p.id) ?? 0 }))
         .filter((i) => i.qty !== 0),
@@ -51,10 +60,15 @@ export default async function DeliveriesPage() {
 
   return (
     <>
-      <h1 className="h1">Доставка</h1>
+      <PageHeader
+        title="Доставка"
+        hint="Кто что везёт прямо сейчас и что числится за водителями."
+      />
 
       <h2 className="h2">Активные рейсы</h2>
-      {active.length === 0 && <p className="card mb-6 text-sm text-zinc-500">Активных рейсов нет.</p>}
+      {active.length === 0 && (
+        <p className="card mb-6 text-sm text-zinc-500">Активных рейсов нет.</p>
+      )}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         {active.map((t) => (
           <section key={t.id} className="card">
@@ -62,24 +76,25 @@ export default async function DeliveriesPage() {
               <span className="text-lg font-semibold">
                 №{t.id} · {t.point.name}
               </span>
-              <span
-                className={`rounded-full px-3 py-1 text-sm font-medium ${
-                  t.status === "DELIVERED"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-emerald-100 text-emerald-800"
-                }`}
-              >
-                {TRIP_STATUS_LABEL[t.status]}
-              </span>
+              {t.status === "DELIVERED" && (
+                <Chip tone="amber">Ждёт приёма продавцом</Chip>
+              )}
             </p>
             <p className="mb-2 text-sm text-zinc-500">
-              Водитель {t.driver.fullName} · назначен {formatDateTime(t.createdAt)}
+              Водитель {t.driver.fullName} · назначен{" "}
+              {formatDateTime(t.createdAt)}
             </p>
+            <TripSteps status={t.status} />
             <TripItems items={t.items} />
             {t.status === "ASSIGNED" && (
               <details className="mt-3">
-                <summary className="cursor-pointer text-sm text-red-700">Отменить рейс</summary>
-                <ActionForm action={cancelTripAction} submitLabel="Отменить рейс">
+                <summary className="cursor-pointer text-sm text-red-700">
+                  Отменить рейс
+                </summary>
+                <ActionForm
+                  action={cancelTripAction}
+                  submitLabel="Отменить рейс"
+                >
                   <input type="hidden" name="tripId" value={t.id} />
                   <label className="label mt-2">Причина</label>
                   <input name="reason" className="input" required />
@@ -92,7 +107,9 @@ export default async function DeliveriesPage() {
 
       <h2 className="h2">Числится за водителями</h2>
       {onDrivers.length === 0 && (
-        <p className="card mb-6 text-sm text-zinc-500">За водителями ничего не числится.</p>
+        <p className="card mb-6 text-sm text-zinc-500">
+          За водителями ничего не числится.
+        </p>
       )}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         {onDrivers.map((d) => (
@@ -103,32 +120,82 @@ export default async function DeliveriesPage() {
             <p className="text-lg font-semibold">{d.driver.fullName}</p>
             <p className="mb-2 text-sm text-zinc-500">
               {d.busy
-                ? "Есть незавершённый рейс: товар в машине."
+                ? "В рейсе: товар в машине, это нормально."
                 : "Незавершённых рейсов нет. Товар нужно вернуть на склад или разобрать недостачу."}
             </p>
-            <ActionForm
-              action={acceptReturnAction}
-              submitLabel="Принять на склад"
-              confirm="Принять возврат на склад?"
-            >
-              <input type="hidden" name="driverId" value={d.driver.id} />
-              <div className="grid grid-cols-[1fr_auto_7rem] items-center gap-x-3 gap-y-2">
-                {d.items.map((i) => (
-                  <label key={i.product.id} className="contents">
-                    <span>{i.product.name}</span>
-                    <span className="text-sm text-zinc-500">числится {i.qty}</span>
-                    <input
-                      name={`qty_${i.product.id}`}
-                      type="number"
-                      min={0}
-                      max={i.qty}
-                      placeholder="0"
-                      className="input num"
-                    />
-                  </label>
-                ))}
-              </div>
-            </ActionForm>
+            {d.busy ? (
+              <>
+                <ul className="mb-2">
+                  {d.items.map((i) => (
+                    <li
+                      key={i.product.id}
+                      className="flex justify-between py-1"
+                    >
+                      <span>{i.product.name}</span>
+                      <span className="font-semibold tabular-nums">
+                        {i.qty}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <details>
+                  <summary className="cursor-pointer text-sm text-zinc-500">
+                    Принять часть товара на склад
+                  </summary>
+                  <ActionForm
+                    action={acceptReturnAction}
+                    submitLabel="Принять на склад"
+                    confirm="Принять возврат на склад?"
+                  >
+                    <input type="hidden" name="driverId" value={d.driver.id} />
+                    <div className="grid grid-cols-[1fr_auto_7rem] items-center gap-x-3 gap-y-2">
+                      {d.items.map((i) => (
+                        <label key={i.product.id} className="contents">
+                          <span>{i.product.name}</span>
+                          <span className="text-sm text-zinc-500">
+                            числится {i.qty}
+                          </span>
+                          <input
+                            name={`qty_${i.product.id}`}
+                            type="number"
+                            min={0}
+                            max={i.qty}
+                            placeholder="0"
+                            className="input num"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </ActionForm>
+                </details>
+              </>
+            ) : (
+              <ActionForm
+                action={acceptReturnAction}
+                submitLabel="Принять на склад"
+                confirm="Принять возврат на склад?"
+              >
+                <input type="hidden" name="driverId" value={d.driver.id} />
+                <div className="grid grid-cols-[1fr_auto_7rem] items-center gap-x-3 gap-y-2">
+                  {d.items.map((i) => (
+                    <label key={i.product.id} className="contents">
+                      <span>{i.product.name}</span>
+                      <span className="text-sm text-zinc-500">
+                        числится {i.qty}
+                      </span>
+                      <input
+                        name={`qty_${i.product.id}`}
+                        type="number"
+                        min={0}
+                        max={i.qty}
+                        placeholder="0"
+                        className="input num"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </ActionForm>
+            )}
           </section>
         ))}
       </div>
@@ -161,14 +228,16 @@ export default async function DeliveriesPage() {
                       ? "Отменён"
                       : t.items.map((i) => {
                           const bad =
-                            i.qtyLoaded !== i.qtyPlanned || i.qtyReceived !== i.qtyUnloaded;
+                            i.qtyLoaded !== i.qtyPlanned ||
+                            i.qtyReceived !== i.qtyUnloaded;
                           return (
                             <span
                               key={i.id}
                               className={`block ${bad ? "font-semibold text-red-600" : ""}`}
                             >
-                              {i.product.name}: {i.qtyPlanned} / {cell(i.qtyLoaded)} /{" "}
-                              {cell(i.qtyUnloaded)} / {cell(i.qtyReceived)}
+                              {i.product.name}: {i.qtyPlanned} /{" "}
+                              {cell(i.qtyLoaded)} / {cell(i.qtyUnloaded)} /{" "}
+                              {cell(i.qtyReceived)}
                             </span>
                           );
                         })}

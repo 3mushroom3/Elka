@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/ActionForm";
+import { CountForm } from "@/components/CountForm";
 import { MobileShell } from "@/components/MobileShell";
-import { QtyInput } from "@/components/QtyInput";
 import { currentShift, productsToCount } from "@/domain/shift";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -54,11 +54,7 @@ export default async function OpenShiftPage({
         wide
       >
         <input type="hidden" name="pointId" value={point.id} />
-        <div className="card">
-          {products.map((p) => (
-            <QtyInput key={p.id} name={`qty_${p.id}`} label={p.name} />
-          ))}
-        </div>
+        <CountForm products={products.map((p) => ({ id: p.id, name: p.name }))} />
       </ActionForm>
     </MobileShell>
   );

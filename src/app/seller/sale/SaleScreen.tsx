@@ -113,8 +113,10 @@ export function SaleScreen({ products }: { products: Product[] }) {
     });
   };
 
+  // Клавиша ниже привычного: вместе с «Дальше» весь блок должен помещаться
+  // в нижнюю треть экрана телефона.
   const key =
-    "h-16 rounded-xl border border-zinc-300 bg-white text-2xl font-semibold active:bg-zinc-100";
+    "h-14 rounded-xl border border-zinc-300 bg-white text-2xl font-semibold active:bg-zinc-100";
 
   // Шаг 3: способ оплаты
   if (step === "payment") {
@@ -181,59 +183,8 @@ export function SaleScreen({ products }: { products: Product[] }) {
         </div>
       </div>
 
-      {!draft.discounted && draft.product.quickPrices.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {draft.product.quickPrices.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className="h-16 rounded-xl bg-emerald-700 text-xl font-bold text-white active:scale-[0.98]"
-              onClick={() => {
-                setDraft({ ...draft, sticker: String(p) });
-                // Цена со стикера выбрана одной кнопкой: сразу к оплате
-                if (draft.qty === 1) setStep("payment");
-              }}
-            >
-              {p.toLocaleString("ru-RU")}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2">
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((d) => (
-          <button key={d} type="button" className={key} onClick={() => type(d)}>
-            {d}
-          </button>
-        ))}
-        <button type="button" className={key} onClick={erase} aria-label="Стереть">
-          ⌫
-        </button>
-      </div>
-
-      <div className="card flex items-center justify-between">
-        <span className="text-lg">Количество</span>
-        <span className="flex items-center gap-3">
-          <button
-            type="button"
-            className="h-12 w-12 rounded-xl border border-zinc-300 text-2xl"
-            onClick={() => setDraft({ ...draft, qty: Math.max(1, draft.qty - 1) })}
-            aria-label="Меньше"
-          >
-            −
-          </button>
-          <span className="w-8 text-center text-2xl font-bold tabular-nums">{draft.qty}</span>
-          <button
-            type="button"
-            className="h-12 w-12 rounded-xl border border-zinc-300 text-2xl"
-            onClick={() => setDraft({ ...draft, qty: draft.qty + 1 })}
-            aria-label="Больше"
-          >
-            +
-          </button>
-        </span>
-      </div>
-
+      {/* Отметка о цене не по стикеру стоит наверху: её ставят до набора цены,
+          а не после, и рука с клавиатуры внизу сюда не тянется. */}
       <div className="card">
         <label className="flex min-h-12 items-center gap-3 text-lg">
           <input
@@ -277,14 +228,71 @@ export function SaleScreen({ products }: { products: Product[] }) {
         )}
       </div>
 
-      <button
-        type="button"
-        className="btn min-h-16 text-xl"
-        disabled={priceProblem !== null}
-        onClick={() => setStep("payment")}
-      >
-        {priceProblem ?? `Дальше: ${rub(total)}`}
-      </button>
+      <div className="card flex items-center justify-between">
+        <span className="text-lg">Количество</span>
+        <span className="flex items-center gap-3">
+          <button
+            type="button"
+            className="h-12 w-12 rounded-xl border border-zinc-300 text-2xl"
+            onClick={() => setDraft({ ...draft, qty: Math.max(1, draft.qty - 1) })}
+            aria-label="Меньше"
+          >
+            −
+          </button>
+          <span className="w-8 text-center text-2xl font-bold tabular-nums">{draft.qty}</span>
+          <button
+            type="button"
+            className="h-12 w-12 rounded-xl border border-zinc-300 text-2xl"
+            onClick={() => setDraft({ ...draft, qty: draft.qty + 1 })}
+            aria-label="Больше"
+          >
+            +
+          </button>
+        </span>
+      </div>
+
+      {/* Клавиатура и кнопка «Дальше» прижаты к низу экрана: телефон лежит
+          в руке, цифры набираются большим пальцем, список выше прокручивается. */}
+      <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col gap-2 border-t border-zinc-200 bg-[#f3f5f4]/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        {!draft.discounted && draft.product.quickPrices.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {draft.product.quickPrices.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className="h-14 rounded-xl bg-emerald-700 text-xl font-bold text-white active:scale-[0.98]"
+                onClick={() => {
+                  setDraft({ ...draft, sticker: String(p) });
+                  // Цена со стикера выбрана одной кнопкой: сразу к оплате
+                  if (draft.qty === 1) setStep("payment");
+                }}
+              >
+                {p.toLocaleString("ru-RU")}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0"].map((d) => (
+            <button key={d} type="button" className={key} onClick={() => type(d)}>
+              {d}
+            </button>
+          ))}
+          <button type="button" className={key} onClick={erase} aria-label="Стереть">
+            ⌫
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="btn min-h-16 text-xl"
+          disabled={priceProblem !== null}
+          onClick={() => setStep("payment")}
+        >
+          {priceProblem ?? `Дальше: ${rub(total)}`}
+        </button>
+      </div>
     </>
   );
 }

@@ -54,9 +54,19 @@ export function ActionForm({
           {state.ok}
         </p>
       )}
-      <button type="submit" className={wide ? "btn mt-4 min-h-16 w-full text-lg" : "btn mt-4"} disabled={pending}>
-        {pending ? "Сохраняю…" : submitLabel}
-      </button>
+      {wide ? (
+        // Телефон: кнопка держится у нижнего края, её достаёт большой палец
+        // руки, в которой лежит телефон. Список выше прокручивается под ней.
+        <div className="sticky bottom-0 z-10 -mx-4 mt-4 border-t border-zinc-200 bg-[#f3f5f4]/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <button type="submit" className="btn min-h-16 w-full text-lg" disabled={pending}>
+            {pending ? "Сохраняю…" : submitLabel}
+          </button>
+        </div>
+      ) : (
+        <button type="submit" className="btn mt-4" disabled={pending}>
+          {pending ? "Сохраняю…" : submitLabel}
+        </button>
+      )}
     </form>
   );
 }

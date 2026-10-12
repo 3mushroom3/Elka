@@ -1,5 +1,6 @@
 "use client";
 
+
 import {
   ArrowLeftRight,
   Bell,
@@ -10,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   type LucideIcon,
+  Map,
   MapPin,
   Menu,
   Scale,
@@ -52,6 +54,7 @@ const GROUPS: { title?: string; items: Item[] }[] = [
     title: "Товар",
     items: [
       { href: "/manager/warehouse", label: "Склад", icon: Warehouse },
+      { href: "/manager/map", label: "Карта", icon: Map },
       { href: "/manager/deliveries", label: "Доставка", icon: Truck },
       { href: "/manager/movements", label: "Журнал движений", icon: ArrowLeftRight },
     ],

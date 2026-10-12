@@ -176,6 +176,9 @@ model Point {
   openDeadline      String   @default("10:00") @map("open_deadline")
   closeDeadline     String   @default("22:00") @map("close_deadline")
   lowStockThreshold Int      @default(10) @map("low_stock_threshold")
+  // Координаты для карты точек; пусто, пока менеджер их не задал
+  latitude          Float?
+  longitude         Float?
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
 
@@ -380,10 +383,27 @@ model Trip {
   items      TripItem[]
   movements  Movement[]
   incidents  Incident[]
+  track      TripLocation[]
 
   @@index([status])
   @@index([driverId])
   @@map("trips")
+}
+
+// Трек рейса: координаты водителя, пока рейс в работе.
+// Пишется только телефоном водителя и только по его разрешению на геолокацию.
+model TripLocation {
+  id         Int      @id @default(autoincrement())
+  tripId     Int      @map("trip_id")
+  latitude   Float
+  longitude  Float
+  accuracyM  Int?     @map("accuracy_m")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  trip Trip @relation(fields: [tripId], references: [id])
+
+  @@index([tripId, recordedAt])
+  @@map("trip_locations")
 }
 
 model TripItem {

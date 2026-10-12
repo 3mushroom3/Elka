@@ -18,6 +18,7 @@
 | Тесты | Vitest + тестовая PostgreSQL | Логика учёта проверяется на настоящей БД, а не на моках |
 | Excel | ExcelJS | Выгрузка .xlsx на сервере |
 | Фото | Диск VPS (том Docker), сжатие на телефоне перед отправкой | Без внешних сервисов |
+| Карта | MapLibre GL, подложка OpenFreeMap, стиль в `public/map` | Без ключей и регистрации |
 | Уведомления | Внутри системы + Telegram-бот менеджеру | Telegram надёжнее web-push на iPhone |
 | Деплой | Docker Compose: app + postgres + Caddy (HTTPS) + ежедневный бэкап БД | Один сервер |
 
@@ -54,7 +55,8 @@ reason, документ-основание, corrects_movement_id`.
 users              id, login, password_hash, full_name, role(MANAGER|SELLER|DRIVER),
                    is_active, telegram_chat_id
 sessions           id, token_hash, user_id, expires_at
-points             id, name, address, open_deadline, close_deadline, low_stock_threshold, is_active
+points             id, name, address, open_deadline, close_deadline, low_stock_threshold,
+                   latitude NULL, longitude NULL, is_active   -- координаты для карты
 user_points        user_id, point_id                      -- на каких точках может работать продавец
 products           id, name, category(TREE|GOODS|ACCESSORY), commission_percent, quick_prices[],
                    is_countable, sort_order, is_active
@@ -71,6 +73,7 @@ trips              id, request_id, driver_id, status(ASSIGNED|LOADED|IN_TRANSIT|
                    loaded_at, departed_at, delivered_at, accepted_at
 trip_items         id, trip_id, product_id, qty_planned (утвердил менеджер), qty_loaded (водитель),
                    qty_unloaded (водитель), qty_received (продавец)
+trip_locations     id, trip_id, latitude, longitude, accuracy_m, recorded_at  -- трек рейса
 
 shifts             id, point_id, seller_id, date, opened_at, closed_at, status(OPEN|CLOSED),
                    cash_expected, cash_actual, cash_diff, cash_received_at, stickers_checked_at
@@ -198,6 +201,7 @@ audit_log          id, user_id, action, entity, entity_id, payload(json), create
 9. Инциденты: список, разбор, решение; недостача по продавцам и водителям.
 10. Журнал движений и ручная корректировка.
 11. Отчёты, зарплата, выгрузка в Excel.
+11a. Карта: точки с остатком и продажами за сегодня, водители в рейсе и их трек.
 12. Справочники: точки, сотрудники, виды товара.
 13. Журнал действий.
 14. Уведомления.
@@ -214,7 +218,8 @@ audit_log          id, user_id, action, entity, entity_id, payload(json), create
 
 ### Водитель (телефон)
 1. Мои рейсы.
-2. Рейс: загрузка → выехал → выгрузка.
+2. Рейс: загрузка → выехал → выгрузка; галочка «показывать менеджеру, где я».
+3. История рейсов.
 
 ## 6. Этапы
 

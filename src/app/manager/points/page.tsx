@@ -54,6 +54,33 @@ function PointFields({ point }: { point?: Point }) {
           />
         </div>
       </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Широта</label>
+          <input
+            name="latitude"
+            inputMode="decimal"
+            placeholder="55.751244"
+            defaultValue={point?.latitude ?? ""}
+            className="input"
+          />
+        </div>
+        <div>
+          <label className="label">Долгота</label>
+          <input
+            name="longitude"
+            inputMode="decimal"
+            placeholder="37.618423"
+            defaultValue={point?.longitude ?? ""}
+            className="input"
+          />
+        </div>
+      </div>
+      <p className="mt-1 text-sm text-zinc-500">
+        Координаты нужны, чтобы точка появилась на карте. Их можно скопировать из любой карты:
+        сначала широта, потом долгота. Без координат точка работает как раньше, просто не видна на
+        карте.
+      </p>
     </>
   );
 }

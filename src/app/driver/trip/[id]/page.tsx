@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/ActionForm";
 import { MobileShell } from "@/components/MobileShell";
 import { QtyInput } from "@/components/QtyInput";
+import { TripTracker } from "@/components/TripTracker";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { TRIP_STATUS_LABEL } from "@/lib/labels";
@@ -30,6 +31,10 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
         <p className="text-xl font-bold">{trip.point.name}</p>
         {trip.point.address && <p className="text-zinc-600">{trip.point.address}</p>}
       </div>
+
+      {trip.status !== "ACCEPTED" && trip.status !== "CANCELLED" && (
+        <TripTracker tripId={trip.id} />
+      )}
 
       {trip.status === "ASSIGNED" && (
         <ActionForm

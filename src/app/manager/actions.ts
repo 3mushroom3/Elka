@@ -39,6 +39,16 @@ function idList(form: FormData, name: string) {
   return form.getAll(name).map(Number).filter(Number.isInteger);
 }
 
+// Координата: пустое поле значит «не задана». Запятая как разделитель тоже
+// принимается: на телефоне её ставят чаще точки.
+function floatField(form: FormData, name: string) {
+  const raw = strField(form, name).replace(",", ".");
+  if (raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) throw new DomainError("Координаты указываются числом");
+  return n;
+}
+
 function enumField<T extends string>(form: FormData, name: string, values: Record<string, T>) {
   const raw = strField(form, name);
   if (!(raw in values)) throw new DomainError("Недопустимое значение поля");
@@ -135,6 +145,8 @@ function pointInput(form: FormData, isActive: boolean): PointInput {
     openDeadline: strField(form, "openDeadline"),
     closeDeadline: strField(form, "closeDeadline"),
     lowStockThreshold: intField(form, "lowStockThreshold"),
+    latitude: floatField(form, "latitude"),
+    longitude: floatField(form, "longitude"),
     isActive,
   };
 }

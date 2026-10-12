@@ -121,6 +121,9 @@ export type PointInput = {
   openDeadline: string;
   closeDeadline: string;
   lowStockThreshold: number;
+  // Координаты для карты: обе задаются вместе или обе пустые
+  latitude?: number | null;
+  longitude?: number | null;
   isActive: boolean;
 };
 
@@ -133,6 +136,17 @@ function checkPoint(input: PointInput) {
   if (!Number.isInteger(input.lowStockThreshold) || input.lowStockThreshold < 0) {
     throw new DomainError("Порог низкого остатка не может быть отрицательным");
   }
+  const latitude = input.latitude ?? null;
+  const longitude = input.longitude ?? null;
+  if ((latitude === null) !== (longitude === null)) {
+    throw new DomainError("Координаты задаются парой: широта и долгота");
+  }
+  if (latitude !== null && (!Number.isFinite(latitude) || Math.abs(latitude) > 90)) {
+    throw new DomainError("Широта: число от −90 до 90");
+  }
+  if (longitude !== null && (!Number.isFinite(longitude) || Math.abs(longitude) > 180)) {
+    throw new DomainError("Долгота: число от −180 до 180");
+  }
 }
 
 export async function createPoint(tx: Tx, actorId: number, input: PointInput) {
@@ -142,7 +156,13 @@ export async function createPoint(tx: Tx, actorId: number, input: PointInput) {
     throw new DomainError("Точка с таким названием уже есть");
   }
   const point = await tx.point.create({
-    data: { ...input, name, address: input.address.trim() },
+    data: {
+      ...input,
+      name,
+      address: input.address.trim(),
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+    },
   });
   await tx.location.create({ data: { type: LocationType.POINT, pointId: point.id } });
   await audit(tx, actorId, "point.create", "point", point.id, { name });
@@ -162,7 +182,13 @@ export async function updatePoint(tx: Tx, actorId: number, pointId: number, inpu
   }
   await tx.point.update({
     where: { id: pointId },
-    data: { ...input, name, address: input.address.trim() },
+    data: {
+      ...input,
+      name,
+      address: input.address.trim(),
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+    },
   });
   await audit(tx, actorId, "point.update", "point", pointId, { ...input, name });
 }

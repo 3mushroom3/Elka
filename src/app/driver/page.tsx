@@ -82,23 +82,25 @@ export default async function DriverHome() {
         )}
       </section>
 
-      {done.length > 0 && (
-        <section className="card">
-          <h2 className="h2">Последние выполненные</h2>
-          {done.map((t) => (
-            <Link
-              key={t.id}
-              href={`/driver/trip/${t.id}`}
-              className="block border-b border-zinc-100 py-2 last:border-0"
-            >
-              №{t.id} · {t.point.name}
-              <span className="block text-sm text-zinc-500">
-                {t.acceptedAt && formatDateTime(t.acceptedAt)}
-              </span>
-            </Link>
-          ))}
-        </section>
-      )}
+      <section className="card">
+        <h2 className="h2">Последние выполненные</h2>
+        {done.length === 0 && <p className="text-sm text-zinc-500">Завершённых рейсов пока нет.</p>}
+        {done.map((t) => (
+          <Link
+            key={t.id}
+            href={`/driver/trip/${t.id}`}
+            className="block border-b border-zinc-100 py-2 last:border-0"
+          >
+            №{t.id} · {t.point.name}
+            <span className="block text-sm text-zinc-500">
+              {t.acceptedAt && formatDateTime(t.acceptedAt)}
+            </span>
+          </Link>
+        ))}
+        <Link href="/driver/trips" className="btn-secondary mt-3 inline-flex min-h-12">
+          Вся история рейсов
+        </Link>
+      </section>
     </MobileShell>
   );
 }
